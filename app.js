@@ -16,16 +16,18 @@ const app = express();
 app.use(express.json());
 
 const server = http.createServer(app);
-const io     = new Server(server, { cors: { origin: "*" } });
+const io     = new Server(server, { cors: {
+    origin: "*", 
+    methods: ["GET", "POST"]
+  } });
 
-// Log when a frontend client connects via socket.io
 io.on("connection", (socket) => {
   console.log(`Frontend client connected: ${socket.id}`);
 });
 
 
 app.use(cors({
-  origin: '*', // Allow all origins; restrict as needed for security
+  origin: '*', 
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type'],
 }));
@@ -59,10 +61,9 @@ function connectFinnhub() {
     if (msg.type !== "trade") return;
 
     msg.data.forEach(tick => {
-      const card = stocks.updatePrice(tick.s, tick.p); // merge & compute %
-      if (card) io.emit("stock-update", ()=>{
-        console.log("CLient received stock update", card);
-      });          // push to every client
+      const card = stocks.updatePrice(tick.s, tick.p);
+      //Send the updated stock data to all connected clients
+      if (card) io.emit("stock-update", card);          
     });
   });
 
@@ -78,13 +79,13 @@ function connectFinnhub() {
 }
 connectFinnhub();
 
-// Start the server
+// Start the server and connect to the database
 const start = async () => {
   const ip='192.168.1.2'
   try {
     const res = await connectDB(process.env.MONGO_URI);
     if(res) console.log('DB connected!!')
-    app.listen(3000,ip,() =>
+    server.listen(3000,ip,() =>
       console.log(`HTTP server is running on port ${process.env.PORT || 'http://192.168.1.2:3000'}`)
     );
   } catch (error) {

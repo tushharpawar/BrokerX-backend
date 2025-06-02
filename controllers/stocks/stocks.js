@@ -1,71 +1,95 @@
 // stocks.js
 const axios = require("axios");
 
-const TOKEN   = process.env.FINNHUB_API_KEY;
-const REST    = "https://finnhub.io/api/v1";
-const symbols = [               // choose ≤50 on free tier
-  "AAPL","MSFT","NVDA","TSLA","AMZN","META",
-  "GOOGL","AMD","NFLX","UBER"
-];
-module.exports.symbols = symbols;
+const TOKEN = process.env.FINNHUB_API_KEY;
+const REST  = "https://finnhub.io/api/v1";
 
-const cache = new Map();        // symbol → { ...card }
+const categories = {
+  trending: [
+    "NVDA", "AAPL", "TSLA", "META",
+    "MSFT", "GOOGL", "UBER",
+  ],
+  largeCap: [
+    "BRK.B", "JNJ", "V", "PG", "JPM", "MA", "WMT",
+  ],
+  midCap: [
+    "ROKU", "DDOG", "TEAM", "TWLO", "ZS", "BILL",
+  ],
+  smallCap: [
+    "FUBO", "BIGC", "LMND", "PLUG", "SOFI", "SNDL",
+  ],
+};
 
-/* fetch static company info + yesterday’s close */
-(async function bootstrap () {
-  await Promise.all(symbols.map(async (sym) => {
-    const [profile, quote] = await Promise.all([
-      axios.get(`${REST}/stock/profile2`, { params:{ symbol:sym, token:TOKEN }}),
-      axios.get(`${REST}/quote`,         { params:{ symbol:sym, token:TOKEN }})
-    ]);
 
-    cache.set(sym, {
-      symbol      : sym,
-      companyName : profile.data.name         || sym,
-      logo        : profile.data.logo         || "",
-      price       : quote.data.c              || 0,
-      prevClose   : quote.data.pc             || quote.data.c,
-      change      : 0,
-      percent     : "0.00%",
-    });
-  }));
-  console.log("🗄️  cache primed");
+const symbols = Object.values(categories).flat(); 
+module.exports.symbols     = symbols;
+module.exports.categories  = categories;
+
+const cache = new Map(); 
+
+(async function bootstrap() {
+  await Promise.all(
+    symbols.map(async (sym) => {
+      const [profile, quote] = await Promise.all([
+        axios.get(`${REST}/stock/profile2`, { params: { symbol: sym, token: TOKEN } }),
+        axios.get(`${REST}/quote`,         { params: { symbol: sym, token: TOKEN } }),
+      ]);
+
+
+      const cat = Object.keys(categories).find((c) => categories[c].includes(sym));
+
+      cache.set(sym, {
+        symbol: sym,
+        companyName: profile.data.name || sym,
+        logo: profile.data.logo || "",
+        price: quote.data.c || 0,
+        prevClose: quote.data.pc || quote.data.c,
+        change: 0,
+        percent: "0.00%",
+        category: cat || "misc",
+      });
+    }),
+  );
+  console.log("🗄️  cache symbols");
 })();
 
-/* called every tick */
-const DECIMALS = 2;        // change to 3 if you want finer %
-const PLUS     = Intl.NumberFormat("en-US", { signDisplay: "always", minimumFractionDigits: DECIMALS, maximumFractionDigits: DECIMALS });
-const PERCENT  = new Intl.NumberFormat("en-US", { signDisplay: "always", style: "percent", minimumFractionDigits: DECIMALS, maximumFractionDigits: DECIMALS });
+
+const DECIMALS = 2;
+const PLUS     = Intl.NumberFormat("en-US", {
+  signDisplay: "always",
+  minimumFractionDigits: DECIMALS,
+  maximumFractionDigits: DECIMALS,
+});
+const PERCENT  = Intl.NumberFormat("en-US", {
+  signDisplay: "always",
+  style: "percent",
+  minimumFractionDigits: DECIMALS,
+  maximumFractionDigits: DECIMALS,
+});
 
 function updatePrice(symbol, rawPrice) {
-
-    console.log("Function called")
-  const p = Number(rawPrice);          // ensure numeric
+  const p = Number(rawPrice);
   if (!Number.isFinite(p)) return null;
 
   const row = cache.get(symbol);
   if (!row) return null;
 
-  const prev = Number(row.prevClose);  // make sure it’s numeric
+  const prev = Number(row.prevClose);
   const diff = p - prev;
   const pct  = prev ? diff / prev : 0;
 
-  Object.assign(row, {
-    price   : p,
-    change  : diff,
-    percent : pct
-  });
+  Object.assign(row, { price: p, change: diff, percent: pct });
 
-  /* return formatted AND raw numbers */
   return {
-    symbol      : symbol,
-    companyName : row.companyName,
-    logo        : row.logo,
-    price       : p,
-    change      : PLUS.format(diff),       // e.g. "+3.12"
-    percent     : PERCENT.format(pct),     // e.g. "+1.65%"
-    changeRaw   : diff,
-    percentRaw  : pct
+    symbol,
+    companyName: row.companyName,
+    logo: row.logo,
+    price: p,
+    change: PLUS.format(diff),
+    percent: PERCENT.format(pct),
+    changeRaw: diff,
+    percentRaw: pct,
+    category: row.category,
   };
 }
 
