@@ -85,6 +85,7 @@ function updatePrice(symbol, rawPrice) {
     companyName: row.companyName,
     logo: row.logo,
     price: p,
+    prevClose: prev,
     change: PLUS.format(diff),
     percent: PERCENT.format(pct),
     changeRaw: diff,
