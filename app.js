@@ -35,6 +35,7 @@ app.get("/api/stocks", (_req, res) => {
   res.json(stocks.snapshot());
 });
 app.use("/api/stock", require("./routes/stocks"));
+app.use("/api/razorpay",require("./routes/razorpay.js"));
 
 
 // Middleware
