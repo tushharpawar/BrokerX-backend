@@ -36,7 +36,9 @@ app.get("/api/stocks", (_req, res) => {
 });
 app.use("/api/stock", require("./routes/stocks"));
 app.use("/api/razorpay",require("./routes/razorpay.js"));
-
+app.use("/api/orders",require("./routes/orders.js"))
+app.use("/api/holdings",require("./routes/holdings.js"));
+app.use("/api/transactions",require("./routes/transactions.js"));
 
 // Middleware
 app.use(notFoundMiddleware);

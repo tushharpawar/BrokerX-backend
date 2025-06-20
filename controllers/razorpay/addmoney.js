@@ -1,6 +1,7 @@
 const Razorpay = require("razorpay");
-const { v4: uuidv4 } = require("uuid");
 const User = require("../../models/User");
+const Transactions = require("../../models/Transactions");
+const { createTransaction } = require("../transactions/transactions");
 
 const razorpayInstance = new Razorpay({
   key_id: process.env.RAZORPAY_API_KEY,
@@ -10,11 +11,9 @@ const razorpayInstance = new Razorpay({
 const createOrderRP = async (req, res) => {
   try {
     const { amount } = await req.body;
-    console.log("amount", amount);
-
     const options = {
       amount: amount * 100,
-      currency:'USD',
+      currency: "USD",
     };
 
     const orders = await razorpayInstance.orders.create(options);
@@ -28,8 +27,13 @@ const createOrderRP = async (req, res) => {
 };
 
 const verifyPayment = async (req, res) => {
-  const { razorpay_order_id, razorpay_payment_id, razorpay_signature,userId,amount } =
-    req.body;
+  const {
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature,
+    userId,
+    amount,
+  } = req.body;
 
   const secret = razorpayInstance.key_secret;
   const body = razorpay_order_id + "|" + razorpay_payment_id;
@@ -48,12 +52,27 @@ const verifyPayment = async (req, res) => {
       // Update user's wallet balance
       user.balance = (user.balance || 0) + parseFloat(amount);
       await user.save();
-      console.log("Payment verified!");
+      const transaction = new Transactions({
+        userId: user._id,
+        type:"ADD_FUNDS",
+        amount: parseFloat(amount),
+        note: "Funds added to wallet",
+      });
+      await transaction.save();
+      console.log("Payment verified! && transaction created");
       console.log(`User ${userId} balance updated to ${user.balance}`);
-      return res.status(200).json({ status:201,success:true, message: "Payment verified and user balance updated" });
+      return res
+      .status(200)
+      .json({
+        status: 201,
+        success: true,
+        message: "Payment verified and user balance updated",
+      });
     } else {
       console.log("Not verified!");
-      return res.status(401).json({ status:401,success:false, message: "Not verified" });
+      return res
+        .status(401)
+        .json({ status: 401, success: false, message: "Not verified" });
     }
   } catch (error) {
     console.log("Error while verifying order", error);
