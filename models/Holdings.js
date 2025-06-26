@@ -6,7 +6,7 @@ const HoldingsSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    stockSymbol: {
+    symbol: {
       type: String,
       required: true,
     },
@@ -15,7 +15,7 @@ const HoldingsSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
-    averagePrice: {
+    avgPrice: {
       type: Number,
       required: true,
       min: 0,

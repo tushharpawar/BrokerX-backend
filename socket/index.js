@@ -6,8 +6,54 @@ const stocks = require("../controllers/stocks/stocks.js");
 const FINNWS = `wss://ws.finnhub.io?token=${process.env.FINNHUB_API_KEY}`;
 
 let io;
-const clientSubscriptions = {}; // { socketId: [symbols] }
-const singleStockMap = {};
+const clientSubscriptions = {};
+const singleStockMap = {}; 
+const alpacaConnections = {}; 
+let ws;
+let subscribedSymbols = new Set();
+
+function connectAlpacaWS() {
+  if (ws) return;
+  ws = new WebSocket('wss://stream.data.alpaca.markets/v2/iex', {
+    headers: {
+      'APCA-API-KEY-ID': process.env.ALPACA_KEY,
+      'APCA-API-SECRET-KEY': process.env.ALPACA_SECRET
+    }
+  });
+
+  ws.on("open", () => {
+    ws.send(JSON.stringify({
+      action: "auth",
+      key: process.env.ALPACA_KEY,
+      secret: process.env.ALPACA_SECRET,
+    }));
+  });
+
+  ws.on("message", (raw) => {
+    const msg = JSON.parse(raw);
+    if (msg[0]?.T === "success" && msg[0]?.msg === "authenticated") {
+      // Subscribe to all current symbols after auth
+      if (subscribedSymbols.size > 0) {
+        ws.send(JSON.stringify({ action: "subscribe", trades: Array.from(subscribedSymbols) }));
+      }
+    }
+    if (msg[0]?.T === "t") {
+      io.emit("alpaca-price-update", {
+        symbol: msg[0].S,
+        price: msg[0].p,
+      });
+    }
+  });
+
+  ws.on("error", (err) => {
+    console.error("Alpaca WS Error:", err);
+  });
+
+  ws.on("close", () => {
+    console.log("Alpaca WS closed");
+    ws = null;
+  });
+}
 
 function initSocket(server) {
   io = new Server(server, {
@@ -39,7 +85,7 @@ function initSocket(server) {
       }
     });
 
-    socket.on("subscribe-to-single", (symbol) => {
+  socket.on("subscribe-to-single", (symbol) => {
       console.log(`📥 ${socket.id} subscribing to SINGLE: ${symbol}`);
 
       // Overwrite with new symbol (only one at a time)
@@ -60,6 +106,30 @@ function initSocket(server) {
       console.log(`🔌 ${socket.id} unsubscribed from single-stock`);
       delete singleStockMap[socket.id];
     });
+
+    socket.on("subscribe-to-alpaca", (symbols) => {
+    connectAlpacaWS();
+    const newSymbols = new Set(symbols);
+
+    // Subscribe to new symbols
+    for (const symbol of newSymbols) {
+      if (!subscribedSymbols.has(symbol)) {
+        subscribedSymbols.add(symbol);
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ action: "subscribe", trades: [symbol] }));
+        }
+      }
+    }
+
+    for (const symbol of subscribedSymbols) {
+      if (!newSymbols.has(symbol)) {
+        subscribedSymbols.delete(symbol);
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ action: "unsubscribe", trades: [symbol] }));
+        }
+      }
+    }
+  });
 
     socket.on("disconnect", () => {
       console.log(`❌ Client disconnected: ${socket.id}`);
@@ -88,12 +158,8 @@ function connectFinnhub() {
 
     msg.data.forEach((tick) => {
       const { s: symbol, p: price } = tick;
-
-      // 📤 Emit to everyone for card UI (dashboard)
       const card = stocks.updatePrice(symbol, price);
       if (card) io.emit("stock-update", card);
-
-      // 📤 Emit only to users subscribed to this symbol for single stock
       Object.entries(singleStockMap).forEach(([socketId, subSymbol]) => {
         if (subSymbol === symbol) {
           const socket = io.sockets.sockets.get(socketId);
