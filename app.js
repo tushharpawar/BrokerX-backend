@@ -47,12 +47,12 @@ app.use(errorHandlerMiddleware);
 
 // Start the server and connect to the database
 const start = async () => {
-  const ip='192.168.31.8'
+  const ip='192.168.31.195'
   try {
     const res = await connectDB(process.env.MONGO_URI);
     if(res) console.log('DB connected!!')
-    server.listen(3000,ip,() =>
-      console.log(`HTTP server is running on port ${process.env.PORT || 'http://192.168.31.8:3000'}`)
+    server.listen(3001,ip,() =>
+      console.log(`HTTP server is running on port ${process.env.PORT || 'http://localhost:3001'}`)
     );
   } catch (error) {
     console.log(error);
