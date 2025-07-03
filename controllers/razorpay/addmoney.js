@@ -78,7 +78,86 @@ const verifyPayment = async (req, res) => {
     console.log("Error while verifying order", error);
   }
 };
+
+const withdrawMoney = async (req, res) => {
+  try {
+    const { userId, amount } = req.body;
+
+    // Validate required fields
+    if (!userId || !amount) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID and amount are required"
+      });
+    }
+
+    // Validate amount
+    const withdrawAmount = parseFloat(amount);
+    if (withdrawAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Amount must be greater than 0"
+      });
+    }
+
+    // Find user
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+
+    // Check if user has sufficient balance
+    const currentBalance = user.balance || 0;
+    if (currentBalance < withdrawAmount) {
+      return res.status(400).json({
+        success: false,
+        message: "Insufficient balance",
+        currentBalance,
+        requestedAmount: withdrawAmount
+      });
+    }
+
+    // Deduct amount from user's balance
+    user.balance = currentBalance - withdrawAmount;
+    await user.save();
+
+    // Create withdrawal transaction record
+    const transaction = new Transactions({
+      userId: user._id,
+      type: "WITHDRAW",
+      amount: withdrawAmount,
+      note: "Funds withdrawn from wallet"
+    });
+    await transaction.save();
+
+    console.log(`Withdrawal successful for user ${userId}. Amount: ${withdrawAmount}, New balance: ${user.balance}`);
+    
+    return res.status(200).json({
+      success: true,
+      message: "Withdrawal successful",
+      transaction: {
+        id: transaction._id,
+        amount: withdrawAmount,
+        type: "WITHDRAW",
+        timestamp: transaction.createdAt
+      },
+      newBalance: user.balance
+    });
+
+  } catch (error) {
+    console.error("Error processing withdrawal:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Server error while processing withdrawal"
+    });
+  }
+};
+
 module.exports = {
   createOrderRP,
   verifyPayment,
+  withdrawMoney,
 };

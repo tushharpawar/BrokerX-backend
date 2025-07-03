@@ -39,6 +39,8 @@ app.use("/api/razorpay",require("./routes/razorpay.js"));
 app.use("/api/orders",require("./routes/orders.js"))
 app.use("/api/holdings",require("./routes/holdings.js"));
 app.use("/api/transactions",require("./routes/transactions.js"));
+app.use("/api/news", require("./routes/news.js"));
+app.use("/api/search", require("./routes/search.js"));
 
 // Middleware
 app.use(notFoundMiddleware);
@@ -51,8 +53,8 @@ const start = async () => {
   try {
     const res = await connectDB(process.env.MONGO_URI);
     if(res) console.log('DB connected!!')
-    server.listen(3001,ip,() =>
-      console.log(`HTTP server is running on port ${process.env.PORT || 'http://localhost:3001'}`)
+    server.listen(5000,ip,() =>
+      console.log(`HTTP server is running on port ${process.env.PORT || 'http://localhost:5000'}`)
     );
   } catch (error) {
     console.log(error);

@@ -22,13 +22,7 @@ const getProfile = async (req, res) => {
     }
 
     return res.status(StatusCodes.OK).json({
-      user: {
-        fullName: user.name,
-        _id: user.id,
-        userImage: user.userImage,
-        email: user.email,
-        balance: user.balance,
-      },
+      user: user,
     });
   } catch (error) {
     throw new BadRequestError(error);
