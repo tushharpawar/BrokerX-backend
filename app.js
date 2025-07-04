@@ -41,6 +41,9 @@ app.use("/api/holdings",require("./routes/holdings.js"));
 app.use("/api/transactions",require("./routes/transactions.js"));
 app.use("/api/news", require("./routes/news.js"));
 app.use("/api/search", require("./routes/search.js"));
+app.get("/ping", (req, res) => {
+  res.status(200).send("pong");
+});
 
 // Middleware
 app.use(notFoundMiddleware);
