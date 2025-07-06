@@ -13,7 +13,7 @@ const createOrderRP = async (req, res) => {
     const { amount } = await req.body;
     const options = {
       amount: amount * 100,
-      currency: "USD",
+      currency: "INR",
     };
 
     const orders = await razorpayInstance.orders.create(options);

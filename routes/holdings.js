@@ -1,5 +1,5 @@
 const express = require('express');
-const { addHolding, sellHolding, getHoldings } = require('../controllers/Holdings/holdings');
+const { addHolding, sellHolding, getHoldings } = require('../controllers/holdings/holdings');
 const router = express.Router();
 
 router.post('/buy',addHolding)
