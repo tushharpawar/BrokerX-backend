@@ -28,6 +28,7 @@ app.use(cors({
 
 // Routers
 const authRouter = require("./routes/auth.js");
+let count = 0
 
 app.use("/oauth", authRouter);
 app.use("/user", require("./routes/user.js"));
@@ -42,6 +43,8 @@ app.use("/api/transactions",require("./routes/transactions.js"));
 app.use("/api/news", require("./routes/news.js"));
 app.use("/api/search", require("./routes/search.js"));
 app.get("/ping", (req, res) => {
+  count++;
+  console.log(`Ping received ${count} times`);
   res.status(200).send("pong");
 });
 
