@@ -11,10 +11,9 @@ const { OAuth2Client } = require("google-auth-library");
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // Helper function to register a new user
-async function registerUser({ email, name, userImage, fullName }) {
+async function registerUser({ email, userImage, fullName }) {
   const user = new User({
     email,
-    name,
     userImage,
     fullName,
     balance: 0,
